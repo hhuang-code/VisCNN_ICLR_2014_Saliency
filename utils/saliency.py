@@ -40,19 +40,24 @@ def compute_saliency_maps(x, y, model):
 Use cross entropy to compute saliency maps
 """
 def compute_saliency_maps_crossentropy(x, y, model):
-    if not isinstance(x, y, Variable):
+    if not isinstance(x, Variable):
         x = Variable(x, requires_grad = True)
     elif not x.requires_grad:
         x.requires_grad = True
 
-    out = model(x)
-    loss_func = torch.nn.CrossEntropyLoss()
-    loss = loss_func(out, y_var)
-    loss.backward()
-    grads = x.grad
-    grads = grads.abs()
-    mx, index_mx = torch.max(grads, 1)
-    #     print(mx, index_mx)
-    salinecy_maps = mx.data
+    if not isinstance(y, Variable):
+        y = Variable(y) # shape: (5)
 
-    return salinecy_maps
+    # forward pass
+    scores = model(x)   # (5 * 1000)
+
+    loss_func = torch.nn.CrossEntropyLoss()
+    loss = loss_func(scores, y)
+    loss.backward()
+
+    saliency_maps = x.grad.data
+    saliency_maps = saliency_maps.abs()
+
+    saliency_maps, idx = torch.max(saliency_maps, dim = 1)  # get max abs from all (3) channels
+
+    return saliency_maps
